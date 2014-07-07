@@ -27,7 +27,7 @@ class Sender
         $curl->setOpt(CURLOPT_SSL_VERIFYHOST, 2);
         $curl->setHeader('Authorization', 'key=' . $serverApiKey);
         $curl->setHeader('Content-Type', 'application/json');
-        $curl->post($gcmUrl, $message->toArray());
+        $curl->post($gcmUrl, $message->toArray(true));
 
         $curl->close();
 

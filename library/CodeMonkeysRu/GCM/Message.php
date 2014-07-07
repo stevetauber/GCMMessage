@@ -125,7 +125,7 @@ class Message {
     /**
      * Convert to an array
      *
-     * @param boolean $json Whether to encode the data as a JSON string.
+     * @param boolean $json Whether to encode the message as a JSON string.
      *
      * @return array
      */
@@ -136,15 +136,14 @@ class Message {
             'delay_while_idle' => $this->delayWhileIdle,
             'time_to_live' => $this->timeToLive,
             'restricted_package_name' => $this->restrictedPackageName,
-            'dry_run' => $this->dryRun
+            'dry_run' => $this->dryRun,
+            'data' => $this->data
         );
         if($json) {
-            $return['data'] = json_encode($this->data);
+            return json_encode($return);
         } else {
-            $return['data'] = $this->data;
+            return $return;
         }
-
-        return $return;
     }
 
     /**
