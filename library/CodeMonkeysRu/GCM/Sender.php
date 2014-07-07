@@ -32,34 +32,34 @@ class Sender
         $curl->close();
 
         if ($curl->error) {
-            $blah = $curl->response_headers;
+            switch($curl->http_status_code) {
+                case 400:
+                    throw new Exception('GCM\Sender->send - Malformed Request: ' . $curl->raw_response, Exception::MALFORMED_REQUEST);
+                    break;
+                case 401:
+                    throw new Exception('GCM\Sender->send - Authentication Error', Exception::AUTHENTICATION_ERROR);
+                    break;
+                default:
+                    $retry = $curl->response_headers['retry-after'];
+                    if($retry) {
+                        if((int) $retry) {
+                            //in seconds: 120
+                            $retry = \DateTime::createFromFormat('U', strtotime('now +' . (int) $retry . ' seconds'));
+                        } else {
+                            //absolute: Fri, 31 Dec 1999 23:59:59 GMT
+                            $retry = \DateTime::createFromFormat('U', strtotime($retry));
+                        }
+                        //TODO: Add to retry queue
+                    } else {
+                        throw new Exception('GCM\Sender->send - Unknown Error: ' . $curl->raw_response, Exception::UNKNOWN_ERROR);
+                    }
+                    break;
+            }
         }
 
         $response = $curl->response;
 
         return new Response($message, $response);
-
-
-
-        switch ($resultHttpCode) {
-            case "200":
-                //All fine. Continue response processing.
-                break;
-
-            case "400":
-                throw new Exception('Malformed request. '.$resultBody, Exception::MALFORMED_REQUEST);
-                break;
-
-            case "401":
-                throw new Exception('Authentication Error. '.$resultBody, Exception::AUTHENTICATION_ERROR);
-                break;
-
-            default:
-                //TODO: Retry-after
-                throw new Exception("Unknown error. ".$resultBody, Exception::UNKNOWN_ERROR);
-                break;
-        }
-
     }
 
 }

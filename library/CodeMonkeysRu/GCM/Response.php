@@ -56,17 +56,13 @@ class Response {
     protected $results = array();
 
     public function __construct(Message $message, $responseBody) {
-        $data = \json_decode($responseBody, true);
-        if ($data === null) {
-            throw new Exception("Malformed response body. ".$responseBody, Exception::MALFORMED_RESPONSE);
-        }
-        $this->multicastId = $data['multicast_id'];
-        $this->failure = $data['failure'];
-        $this->success = $data['success'];
-        $this->canonicalIds = $data['canonical_ids'];
+        $this->multicastId = $responseBody->multicastId;
+        $this->success = $responseBody->success;
+        $this->failure = $responseBody->failure;
+        $this->canonicalIds = $responseBody->canonicalIds;
         $this->results = array();
         foreach ($message->getRegistrationIds() as $key => $registrationId) {
-            $this->results[$registrationId] = $data['results'][$key];
+            $this->results[$registrationId] = $responseBody->results->{$key};
         }
     }
 

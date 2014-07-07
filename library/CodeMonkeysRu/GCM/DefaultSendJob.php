@@ -17,7 +17,8 @@ class DefaultSendJob {
     public $queue;
 
     public function perform() {
-        Sender::send(Message::fromArray($this->args['message']), $this->args['serverApiKey'], $this->args['gcmUrl']);
+        $response = Sender::send(Message::fromArray($this->args['message']), $this->args['serverApiKey'], $this->args['gcmUrl']);
+        $blah = 1;
     }
 
 }
