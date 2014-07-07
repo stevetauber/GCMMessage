@@ -10,17 +10,14 @@ namespace CodeMonkeysRu\GCM;
  */
 class DefaultSendJob {
 
-    protected $job;
+    public $job;
 
-    protected $args;
+    public $args;
 
-    protected $queue;
+    public $queue;
 
     public function perform() {
-        //do the sending
-        $args = $this->args;
-        $job = $this->job;
-        $queue = $this->queue;
+        Sender::send(Message::fromArray($this->args['message']), $this->args['serverApiKey'], $this->args['gcmUrl']);
     }
 
 }

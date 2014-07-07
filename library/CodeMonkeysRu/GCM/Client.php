@@ -55,14 +55,14 @@ class Client {
     /**
      * @param \CodeMonkeysRu\GCM\Message $message
      */
-    public function send(\CodeMonkeysRu\GCM\Message $message) {
+    public function send(Message $message) {
         \Resque::enqueue(
             $this->queueName,
-            'DefaultSendJob',
+            'CodeMonkeysRu\GCM\DefaultSendJob',
             array(
                 'gcmUrl' => $this->gcmUrl,
                 'serverApiKey' => $this->serverApiKey,
-                'message' => $message
+                'message' => $message->toArray()
             )
         );
     }

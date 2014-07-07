@@ -125,20 +125,42 @@ class Message {
     /**
      * Convert to an array
      *
+     * @param boolean $json Whether to encode the data as a JSON string.
+     *
      * @return array
      */
-    public function toArray() {
-        return array(
+    public function toArray($json = false) {
+        $return = array(
             'registration_ids' => $this->registrationIds,
             'collapse_key' => $this->collapseKey,
             'delay_while_idle' => $this->delayWhileIdle,
             'time_to_live' => $this->timeToLive,
             'restricted_package_name' => $this->restrictedPackageName,
-            'dry_run' => $this->dryRun,
-            'data' => $this->data
+            'dry_run' => $this->dryRun
         );
+        if($json) {
+            $return['data'] = json_encode($this->data);
+        } else {
+            $return['data'] = $this->data;
+        }
+
+        return $return;
     }
 
+    /**
+     * To String.
+     *
+     * @return string
+     */
+    public function __toString() {
+        return json_encode($this->toArray());
+    }
+
+    /**
+     * Get Registration IDs.
+     *
+     * @return array
+     */
     public function getRegistrationIds() {
         return $this->registrationIds;
     }
@@ -182,11 +204,10 @@ class Message {
      * @throws Exception When encoded JSON exceeds MAX_SIZE bytes.
      */
     public function setData(array $data) {
-        $encoded = json_encode($data);
-        if (strlen($encoded) > Message::MAX_SIZE) {
+        if (strlen(json_encode($data)) > Message::MAX_SIZE) {
             throw new Exception('GCM\Client->setData - Data payload exceeds limit (max ' . Message::MAX_SIZE .' bytes)', Exception::MALFORMED_REQUEST);
         }
-        $this->data = $encoded;
+        $this->data = $data;
         return $this;
     }
 
