@@ -2,38 +2,40 @@
 namespace CodeMonkeysRu\GCM;
 
 /**
+ * Class Response
+ *
+ * @package CodeMonkeysRu\GCM
  * @author Vladimir Savenkov <ivariable@gmail.com>
  */
-class Response
-{
+class Response {
 
     /**
      * Unique ID (number) identifying the multicast message.
      *
      * @var integer
      */
-    private $multicastId = null;
+    protected $multicastId = null;
 
     /**
      * Number of messages that were processed without an error.
      *
      * @var integer
      */
-    private $success = null;
+    protected $success = null;
 
     /**
      * Number of messages that could not be processed.
      *
      * @var integer
      */
-    private $failure = null;
+    protected $failure = null;
 
     /**
      * Number of results that contain a canonical registration ID.
      *
      * @var integer
      */
-    private $canonicalIds = null;
+    protected $canonicalIds = null;
 
     /**
      * Array of objects representing the status of the messages processed.
@@ -51,13 +53,12 @@ class Response
      *
      * @var array
      */
-    private $results = array();
+    protected $results = array();
 
-    public function __construct(Message $message, $responseBody)
-    {
+    public function __construct(Message $message, $responseBody) {
         $data = \json_decode($responseBody, true);
         if ($data === null) {
-            throw new Exception("Malformed reponse body. ".$responseBody, Exception::MALFORMED_RESPONSE);
+            throw new Exception("Malformed response body. ".$responseBody, Exception::MALFORMED_RESPONSE);
         }
         $this->multicastId = $data['multicast_id'];
         $this->failure = $data['failure'];
@@ -69,28 +70,23 @@ class Response
         }
     }
 
-    public function getMulticastId()
-    {
+    public function getMulticastId() {
         return $this->multicastId;
     }
 
-    public function getSuccessCount()
-    {
+    public function getSuccessCount() {
         return $this->success;
     }
 
-    public function getFailureCount()
-    {
+    public function getFailureCount() {
         return $this->failure;
     }
 
-    public function getNewRegistrationIdsCount()
-    {
+    public function getNewRegistrationIdsCount() {
         return $this->canonicalIds;
     }
 
-    public function getResults()
-    {
+    public function getResults() {
         return $this->results;
     }
 
@@ -100,8 +96,7 @@ class Response
      *
      * @return array oldRegistrationId => newRegistrationId
      */
-    public function getNewRegistrationIds()
-    {
+    public function getNewRegistrationIds() {
         if ($this->getNewRegistrationIdsCount() == 0) {
             return array();
         }
@@ -123,47 +118,35 @@ class Response
      *
      * @return array
      */
-    public function getInvalidRegistrationIds()
-    {
+    public function getInvalidRegistrationIds() {
         if ($this->getFailureCount() == 0) {
             return array();
         }
         $filteredResults = array_filter($this->results,
             function($result) {
                 return (
-                    isset($result['error'])
-                    &&
-                    (
-                    ($result['error'] == "NotRegistered")
-                    ||
-                    ($result['error'] == "InvalidRegistration")
-                    )
-                    );
+                    isset($result['error']) &&
+                    (($result['error'] == "NotRegistered") || ($result['error'] == "InvalidRegistration"))
+                );
             });
 
         return array_keys($filteredResults);
     }
 
     /**
-     * Returns an array of registration ids for which you must resend a message (?),
-     * cause devices aren't available now.
+     * Returns an array of registration ids for which you must resend a message (?), cause devices are not available now.
      *
      * @TODO: check if it be auto sended later
      *
      * @return array
      */
-    public function getUnavailableRegistrationIds()
-    {
+    public function getUnavailableRegistrationIds() {
         if ($this->getFailureCount() == 0) {
             return array();
         }
         $filteredResults = array_filter($this->results,
             function($result) {
-                return (
-                    isset($result['error'])
-                    &&
-                    ($result['error'] == "Unavailable")
-                    );
+                return (isset($result['error']) && ($result['error'] == "Unavailable"));
             });
 
         return array_keys($filteredResults);
