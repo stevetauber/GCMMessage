@@ -21,15 +21,10 @@ class Sender
      * @throws Exception When
      */
     public static function send(Message $message, $serverApiKey, $gcmUrl) {
-        $curl = new Curl();
-        $curl->setUserAgent('CodeMonkeysRu\GCMMessage');
-        $curl->setOpt(CURLOPT_SSL_VERIFYPEER, 1);
-        $curl->setOpt(CURLOPT_SSL_VERIFYHOST, 2);
-        $curl->setHeader('Authorization', 'key=' . $serverApiKey);
-        $curl->setHeader('Content-Type', 'application/json');
-        $curl->post($gcmUrl, $message->toArray(true));
-
-        $curl->close();
+        $curl = self::initCurl();
+        self::configCurl($curl, $serverApiKey);
+        self::postCurl($curl, $gcmUrl, $message->toJson());
+        self::closeCurl($curl);
 
         if ($curl->error) {
             switch($curl->http_status_code) {
@@ -49,17 +44,63 @@ class Sender
                             //absolute: Fri, 31 Dec 1999 23:59:59 GMT
                             $retry = \DateTime::createFromFormat('U', strtotime($retry));
                         }
-                        //TODO: Add to retry queue
+                        return $retry;
                     } else {
-                        throw new Exception('GCM\Sender->send - Unknown Error: ' . $curl->raw_response, Exception::UNKNOWN_ERROR);
+                        //Timeout
+                        if($curl->http_status_code >= 501 && $curl->http_status_code <= 599) {
+                            //Figure out exponential
+                        } else {
+                            throw new Exception('GCM\Sender->send - Unknown Error: ' . $curl->raw_response, Exception::UNKNOWN_ERROR);
+                        }
                     }
                     break;
             }
         }
 
-        $response = $curl->response;
+        return new Response($message, $curl->response);
+    }
 
-        return new Response($message, $response);
+    /**
+     * Init Curl.
+     *
+     * @return Curl
+     */
+    protected static function initCurl() {
+        return new Curl();
+    }
+
+    /**
+     * Configure Curl.
+     *
+     * @param Curl $curl
+     * @param string $serverApiKey
+     */
+    protected static function configCurl(&$curl, $serverApiKey) {
+        $curl->setUserAgent('CodeMonkeysRu\GCMMessage');
+        $curl->setOpt(CURLOPT_SSL_VERIFYPEER, 1);
+        $curl->setOpt(CURLOPT_SSL_VERIFYHOST, 2);
+        $curl->setHeader('Authorization', 'key=' . $serverApiKey);
+        $curl->setHeader('Content-Type', 'application/json');
+    }
+
+    /**
+     * Post message.
+     *
+     * @param Curl $curl
+     * @param string $gcmUrl
+     * @param string $json
+     */
+    protected static function postCurl(&$curl, $gcmUrl, $json) {
+        $curl->post($gcmUrl, $json);
+    }
+
+    /**
+     * Close.
+     *
+     * @param Curl $curl
+     */
+    protected static function closeCurl(&$curl) {
+        $curl->close();
     }
 
 }

@@ -55,14 +55,46 @@ class Response {
      */
     protected $results = array();
 
-    public function __construct(Message $message, $responseBody) {
-        $this->multicastId = $responseBody->multicastId;
+    /**
+     * Array of IDs grouped by failure.
+     *
+     * @var array
+     */
+    protected $failedIds = array();
+
+    /**
+     * Array of expired IDs and their new counterpart.
+     *
+     * @var array
+     */
+    protected $newRegistrationIds = array();
+
+    /**
+     * Constructor
+     *
+     * @param Message   $message Original message
+     * @param \stdClass $responseBody Response from Curl.
+     */
+    public function __construct(Message $message, \stdClass $responseBody) {
+        $this->multicastId = $responseBody->multicast_id;
         $this->success = $responseBody->success;
         $this->failure = $responseBody->failure;
-        $this->canonicalIds = $responseBody->canonicalIds;
+        $this->canonicalIds = $responseBody->canonical_ids;
         $this->results = array();
-        foreach ($message->getRegistrationIds() as $key => $registrationId) {
-            $this->results[$registrationId] = $responseBody->results->{$key};
+        $sentIds = $message->getRegistrationIds();
+        foreach ($responseBody->results as $k => $v) {
+            $id = $sentIds[$k];
+            //Convert from stdClass to assoc array
+            $array = get_object_vars($v);
+            $this->results[$id] = $array;
+            //New Registration IDs
+            if(isset($array['registration_id'])) {
+                $this->newRegistrationIds[$id] = $array['registration_id'];
+            }
+            //Failures
+            if(isset($array['error'])) {
+                $this->failedIds[$array['error']][$id] = $array;
+            }
         }
     }
 
@@ -78,7 +110,7 @@ class Response {
         return $this->failure;
     }
 
-    public function getNewRegistrationIdsCount() {
+    public function getCanonicalIds() {
         return $this->canonicalIds;
     }
 
@@ -86,66 +118,11 @@ class Response {
         return $this->results;
     }
 
-    /**
-     * Return an array of expired registration ids linked to new id
-     * All old registration ids must be updated to new ones in DB
-     *
-     * @return array oldRegistrationId => newRegistrationId
-     */
     public function getNewRegistrationIds() {
-        if ($this->getNewRegistrationIdsCount() == 0) {
-            return array();
-        }
-        $filteredResults = array_filter($this->results,
-            function($result) {
-                return isset($result['registration_id']);
-            });
-
-        $data = array_map(function($result) {
-                return $result['registration_id'];
-            }, $filteredResults);
-
-        return $data;
+        return $this->newRegistrationIds;
     }
 
-    /**
-     * Returns an array containing invalid registration ids
-     * They must be removed from DB because the application was uninstalled from the device.
-     *
-     * @return array
-     */
-    public function getInvalidRegistrationIds() {
-        if ($this->getFailureCount() == 0) {
-            return array();
-        }
-        $filteredResults = array_filter($this->results,
-            function($result) {
-                return (
-                    isset($result['error']) &&
-                    (($result['error'] == "NotRegistered") || ($result['error'] == "InvalidRegistration"))
-                );
-            });
-
-        return array_keys($filteredResults);
+    public function getFailedIds() {
+       return $this->failedIds;
     }
-
-    /**
-     * Returns an array of registration ids for which you must resend a message (?), cause devices are not available now.
-     *
-     * @TODO: check if it be auto sended later
-     *
-     * @return array
-     */
-    public function getUnavailableRegistrationIds() {
-        if ($this->getFailureCount() == 0) {
-            return array();
-        }
-        $filteredResults = array_filter($this->results,
-            function($result) {
-                return (isset($result['error']) && ($result['error'] == "Unavailable"));
-            });
-
-        return array_keys($filteredResults);
-    }
-
 }

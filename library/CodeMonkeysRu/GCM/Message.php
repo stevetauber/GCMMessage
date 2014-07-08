@@ -16,6 +16,21 @@ class Message {
     const MAX_SIZE = 4096;
 
     /**
+     * Max TTL.
+     */
+    const MAX_TTL = 2419200;
+
+    /**
+     * Min TTL.
+     */
+    const MIN_TTL = 0;
+
+    /**
+     * Max Registration IDs.
+     */
+    const MAX_REG_IDS = 1000;
+
+    /**
      * A string array with the list of devices (registration IDs) receiving the message.
      * It must contain at least 1 and at most 1000 registration IDs.
      *
@@ -125,11 +140,9 @@ class Message {
     /**
      * Convert to an array
      *
-     * @param boolean $json Whether to encode the message as a JSON string.
-     *
      * @return array
      */
-    public function toArray($json = false) {
+    public function toArray() {
         $return = array(
             'registration_ids' => $this->registrationIds,
             'collapse_key' => $this->collapseKey,
@@ -139,11 +152,16 @@ class Message {
             'dry_run' => $this->dryRun,
             'data' => $this->data
         );
-        if($json) {
-            return json_encode($return);
-        } else {
-            return $return;
-        }
+        return $return;
+    }
+
+    /**
+     * Convert to a JSON string.
+     *
+     * @return string
+     */
+    public function toJson() {
+        return json_encode($this->toArray());
     }
 
     /**
@@ -174,7 +192,7 @@ class Message {
      */
     public function setRegistrationIds(array $registrationIds) {
         $count = count($registrationIds);
-        if (!$count || $count > 1000) {
+        if (!$count || $count > self::MAX_REG_IDS) {
             throw new Exception('GCM\Client->setRegistrationIds - Must contain 1-1000 (inclusive) Registration IDs. Count: ' . $count, Exception::MALFORMED_REQUEST);
         }
         $this->registrationIds = $registrationIds;
@@ -223,7 +241,21 @@ class Message {
         return $this->timeToLive;
     }
 
+    /**
+     * Set TTL.
+     *
+     * @param null|integer $timeToLive Time to Live.
+     *
+     * @return $this
+     * @throws Exception When TTL is not null|integer OR TTL is not within range
+     */
     public function setTimeToLive($timeToLive) {
+        if(!is_null($timeToLive) && !is_numeric($timeToLive)) {
+            throw new Exception('GCM\Client->setTimeToLive - Invalid TimeToLive: ' . $timeToLive, Exception::INVALID_TTL);
+        } else if(is_numeric($timeToLive) && ($timeToLive < self::MIN_TTL || $timeToLive > self::MAX_TTL)) {
+            throw new Exception('GCM\Client->setTimeToLive - TimeToLive must be between '
+                . self::MIN_TTL . ' and ' . self::MAX_TTL . '. Value: ' . $timeToLive, Exception::OUTSIDE_TTL);
+        }
         $this->timeToLive = $timeToLive;
         return $this;
     }

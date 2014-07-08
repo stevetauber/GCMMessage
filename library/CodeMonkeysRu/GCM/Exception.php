@@ -16,5 +16,6 @@ class Exception extends \Exception {
     const UNKNOWN_ERROR = 4;
     const MALFORMED_RESPONSE = 5;
     const INVALID_PARAMS = 6;
-
+    const INVALID_TTL = 7;
+    const OUTSIDE_TTL = 8;
 }
