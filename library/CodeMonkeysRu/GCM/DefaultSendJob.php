@@ -16,6 +16,9 @@ abstract class DefaultSendJob {
 
     public $queue;
 
+    /**
+     * @var Response
+     */
     public $response;
 
     public function perform() {
@@ -23,23 +26,42 @@ abstract class DefaultSendJob {
             $now = new \DateTime();
             $delay = \DateTime::createFromFormat('U', $this->args['delay']);
             if($delay > $now) {
-                Client::enqueueFromJob($this);
+                Client::enqueueFromJobArgs($this->args);
                 return;
             }
         }
 
-        $response = Sender::send(Message::fromArray($this->args['message']), $this->args['serverApiKey'], $this->args['gcmUrl']);
+        $response = Sender::send(
+            Message::fromArray($this->args['message']),
+            $this->args['serverApiKey'],
+            $this->args['gcmUrl'],
+            isset($this->args['nextDelay']) ? $this->args['nextDelay'] : 1
+        );
+
+        /**
+         * Response can be:
+         *  - DateTime: When to next retry sending the message.
+         *  - Response: Valid response that must be processed.
+         *  - Integer:  Exponential Back off.
+         */
         if($response instanceof \DateTime) {
             $this->args['delay'] = $response->format('U');
-            Client::enqueueFromJob($this);
-        } else if($response instanceof Response) {
+            Client::enqueueFromJobArgs($this->args);
+        } elseif($response instanceof Response) {
             $failed = $response->getFailedIds();
             foreach($failed as $error => $group) {
                 switch($error) {
                     case 'Unavailable':
-                        foreach($group as $item) {
-                            //exponential let off
+                        $message = $this->args['message'];
+                        $message['registration_ids'] = array();
+                        foreach($group as $id => $item) {
+                            $message['registration_ids'][] = $id;
                         }
+                        Client::enqueueFromJobArgs(array(
+                            'serverApiKey' => $this->args['serverApiKey'],
+                            'gcmUrl' => $this->args['gcmUrl'],
+                            'message' => $message
+                        ));
                         break;
                     case 'InternalServerError':
                         foreach($group as $item) {
@@ -49,16 +71,18 @@ abstract class DefaultSendJob {
                     default:
                         /**
                          * The following error messages should remove the Registration IDs from records.
+                         *  - InvalidRegistration
                          *  - NotRegistered
                          */
 
                         /**
                          * The following error messages are malformed requests:
+                         *  - DeviceQuotaExceeded
                          *  - InvalidDataKey
                          *  - InvalidPackageName
-                         *  - InvalidRegistration
                          *  - MismatchSenderId
                          *  - MissingRegistration
+                         *  - QuotaExceeded
                          */
 
                         /**
@@ -70,16 +94,26 @@ abstract class DefaultSendJob {
                 }
             }
             $this->response = $response;
+        } elseif(is_numeric($response)) {
+            $this->args['delay'] = \DateTime::createFromFormat('U', strtotime('now +' . (int) $response . ' seconds'));
+            $this->args['nextDelay'] = $response * 2;
+            Client::enqueueFromJobArgs($this->args);
         }
     }
 
     /**
-     * Check for NotRegistered error message and remove from records.
+     * Check for invalid ids and remove from records.
+     * Check for new registered Ids and update in DB.
+     * Handle malformed requests.
      *
      * Example:
      *
      *   $failed = $this->response->getFailedIds();
      *   foreach($failed['NotRegistered'] as $f) { ... }
+     *
+     * Example:
+     *   $newIds = $this->response->getNewRegistrationIds();
+     *   foreach($newIds as $n) { ... }
      *
      * @return mixed
      */

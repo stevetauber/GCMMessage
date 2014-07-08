@@ -6,6 +6,7 @@ namespace CodeMonkeysRu\GCM;
  *
  * @package CodeMonkeysRu\GCM
  * @author Vladimir Savenkov <ivariable@gmail.com>
+ * @author Steve Tauber <taubers@gmail.com>
  * TODO: Add notification_key when it's stable and working.
  */
 class Message {

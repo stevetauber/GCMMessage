@@ -6,6 +6,7 @@ namespace CodeMonkeysRu\GCM;
  *
  * @package CodeMonkeysRu\GCM
  * @author Vladimir Savenkov <ivariable@gmail.com>
+ * @author Steve Tauber <taubers@gmail.com>
  */
 class Response {
 

@@ -14,28 +14,28 @@ class Client {
      *
      * @var string
      */
-    protected $gcmUrl = 'https://android.googleapis.com/gcm/send';
+    protected static $gcmUrl = 'https://android.googleapis.com/gcm/send';
 
     /**
      * Queue Name.
      *
      * @var string
      */
-    protected $queueName = 'gcmDefault';
+    protected static $queueName = 'gcmDefault';
 
     /**
      * An API key that gives the application server authorized access to Google services.
      *
      * @var string
      */
-    protected $serverApiKey = '';
+    protected static $serverApiKey = '';
 
     /**
      * Class name of the Job that extends DefaultSendJob.
      *
      * @var string
      */
-    protected $sendJob = '';
+    protected static $sendJob = '';
 
     /**
      * @param string $serverApiKey An API key that gives the application server authorized access to Google services.
@@ -46,26 +46,30 @@ class Client {
      * @param string $queueName Queue Name
      * @param mixed  $gcmUrl GCM URL.
      */
-    public function __construct($serverApiKey, $sendJob, $server = 'localhost:6379', $database = 0, $queueName = null, $gcmUrl = false) {
+    public function configure($serverApiKey, $sendJob, $server = 'localhost:6379', $database = 0, $queueName = null, $gcmUrl = false) {
         \Resque::setBackend($server, $database);
 
-        $this->serverApiKey = $serverApiKey;
-        $this->sendJob = $sendJob;
+        self::$serverApiKey = $serverApiKey;
+        self::$sendJob = $sendJob;
 
         if($queueName) {
-            $this->queueName = $queueName;
+            self::$queueName = $queueName;
         }
 
         if ($gcmUrl) {
-            $this->gcmUrl = $gcmUrl;
+            self::$gcmUrl = $gcmUrl;
         }
     }
 
     /**
-     * @param $job
+     * @param $args
      */
-    public static function enqueueFromJob($job) {
-        $blah = 1;
+    public static function enqueueFromJobArgs($args) {
+        \Resque::enqueue(
+            self::$queueName,
+            self::$sendJob,
+            $args
+        );
     }
 
     /**
@@ -73,13 +77,11 @@ class Client {
      *
      * @param \CodeMonkeysRu\GCM\Message $message Message to send.
      * @param \DateTime|boolean $delay When to send the message.
-     *
-     * @return $this
      */
-    public function send(Message $message, $delay = false) {
+    public static function send(Message $message, $delay = false) {
         $args = array(
-            'gcmUrl' => $this->gcmUrl,
-            'serverApiKey' => $this->serverApiKey,
+            'serverApiKey' => self::$serverApiKey,
+            'gcmUrl' => self::$gcmUrl,
             'message' => $message->toArray()
         );
 
@@ -88,22 +90,18 @@ class Client {
         }
 
         \Resque::enqueue(
-            $this->queueName,
-            $this->sendJob,
+            self::$queueName,
+            self::$sendJob,
             $args
         );
-
-        return $this;
     }
 
     /**
      * @param string $gcmUrl
-     * @return $this
      */
-    public function setGcmUrl($gcmUrl)
+    public static function setGcmUrl($gcmUrl)
     {
-        $this->gcmUrl = $gcmUrl;
-        return $this;
+        self::$gcmUrl = $gcmUrl;
     }
 
     /**
@@ -111,17 +109,15 @@ class Client {
      */
     public function getGcmUrl()
     {
-        return $this->gcmUrl;
+        return self::$gcmUrl;
     }
 
     /**
      * @param string $queueName
-     * @return $this
      */
     public function setQueueName($queueName)
     {
-        $this->queueName = $queueName;
-        return $this;
+        self::$queueName = $queueName;
     }
 
     /**
@@ -129,17 +125,15 @@ class Client {
      */
     public function getQueueName()
     {
-        return $this->queueName;
+        return self::$queueName;
     }
 
     /**
      * @param string $serverApiKey
-     * @return $this
      */
     public function setServerApiKey($serverApiKey)
     {
-        $this->serverApiKey = $serverApiKey;
-        return $this;
+        self::$serverApiKey = $serverApiKey;
     }
 
     /**
@@ -147,6 +141,6 @@ class Client {
      */
     public function getServerApiKey()
     {
-        return $this->serverApiKey;
+        return self::$serverApiKey;
     }
 }

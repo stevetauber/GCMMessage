@@ -5,10 +5,17 @@ use Curl\Curl;
 /**
  * Messages sender to GCM servers
  *
+ * @package CodeMonkeysRu\GCM
  * @author Vladimir Savenkov <ivariable@gmail.com>
+ * @author Steve Tauber <taubers@gmail.com>
  */
 class Sender
 {
+
+    /**
+     * Max retry time for exponential back off.
+     */
+    const MAX_RETRY_TIME = 32;
 
     /**
      * Send message to GCM
@@ -16,11 +23,12 @@ class Sender
      * @param Message $message The Message to send.
      * @param string  $serverApiKey Server API Key.
      * @param string  $gcmUrl GCM URL.
+     * @param integer $nextDelay Next exponential back off delay.
      *
      * @return Response
      * @throws Exception When
      */
-    public static function send(Message $message, $serverApiKey, $gcmUrl) {
+    public static function send(Message $message, $serverApiKey, $gcmUrl, $nextDelay = 1) {
         $curl = self::initCurl();
         self::configCurl($curl, $serverApiKey);
         self::postCurl($curl, $gcmUrl, $message->toJson());
@@ -48,10 +56,11 @@ class Sender
                     } else {
                         //Timeout
                         if($curl->http_status_code >= 501 && $curl->http_status_code <= 599) {
-                            //Figure out exponential
-                        } else {
-                            throw new Exception('GCM\Sender->send - Unknown Error: ' . $curl->raw_response, Exception::UNKNOWN_ERROR);
+                            if($nextDelay < self::MAX_RETRY_TIME) {
+                                return $nextDelay;
+                            }
                         }
+                        throw new Exception('GCM\Sender->send - Unknown Error: ' . $curl->raw_response, Exception::UNKNOWN_ERROR);
                     }
                     break;
             }
