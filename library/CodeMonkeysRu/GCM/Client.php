@@ -46,7 +46,7 @@ class Client {
      * @param string $queueName Queue Name
      * @param mixed  $gcmUrl GCM URL.
      */
-    public function configure($serverApiKey, $sendJob, $server = 'localhost:6379', $database = 0, $queueName = null, $gcmUrl = false) {
+    public static function configure($serverApiKey, $sendJob, $server = 'localhost:6379', $database = 0, $queueName = null, $gcmUrl = false) {
         \Resque::setBackend($server, $database);
 
         self::$serverApiKey = $serverApiKey;
