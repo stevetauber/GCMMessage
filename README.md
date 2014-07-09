@@ -3,6 +3,14 @@ Google Cloud Messaging (GCM) PHP Server Library
 
 A PHP library for sending messages to devices registered through Google Cloud Messaging.
 
+Requirements:
+ - PHP >=5.3.2
+ - Redis database
+
+Libraries used:
+ - chrisboulton/php-resque 1.2.x (MIT)
+ - php-curl-class/php-curl-class 2.1.x (No License)
+
 See:
 http://developer.android.com/guide/google/gcm/index.html
 
@@ -12,111 +20,32 @@ Example usage
 
 use \CodeMonkeysRu\GCM;
 
-$sender = new GCM\Sender("YOUR GOOGLE API KEY");
+GCM\Client::configure("YOUR GOOGLE API KEY", 'MyQueueJob');
 
-$message = new GCM\Message(
-        array("device_registration_id1", "device_registration_id2"),
-        array("data1" => "123", "data2" => "string")
-);
+$message = Message::fromArray(array(
+            'registration_ids' => array('device_registration_id1', 'device_registration_id2'),
+            'data' => array('data1' => 123, 'data2' => 'string'),
+        ));
 
+//This can all be set in the original fromArray call.
 $message
-    ->setCollapseKey("collapse_key")
+    ->setCollapseKey('collapse_key')
     ->setDelayWhileIdle(true)
-    ->setTtl(123)
+    ->setTimeToLive(123)
     ->setRestrictedPackageName("com.example.trololo")
-    ->setDryRun(true)
-;
+    ->setDryRun(true);
 
-try {
-    $response = $sender->send($message);
-
-    if ($response->getNewRegistrationIdsCount() > 0) {
-        $newRegistrationIds = $response->getNewRegistrationIds();
-        foreach ($newRegistrationIds as $oldRegistrationId => $newRegistrationId){
-            //Update $oldRegistrationId to $newRegistrationId in DB
-            //TODO
-        }
-    }
-
-    if ($response->getFailureCount() > 0) {
-        $invalidRegistrationIds = $GCMresponse->getInvalidRegistrationIds();
-        foreach($invalidRegistrationIds as $invalidRegistrationId) {
-            //Remove $invalidRegistrationId from DB
-            //TODO
-        }
-
-        //Schedule to resend messages to unavailable devices
-        $unavailableIds = $response->getUnavailableRegistrationIds();
-        //TODO
-    }
-} catch (GCM\Exception $e) {
-
-    switch ($e->getCode()) {
-        case GCM\Exception::ILLEGAL_API_KEY:
-        case GCM\Exception::AUTHENTICATION_ERROR:
-        case GCM\Exception::MALFORMED_REQUEST:
-        case GCM\Exception::UNKNOWN_ERROR:
-        case GCM\Exception::MALFORMED_RESPONSE:
-            //Deal with it
-            break;
-    }
-}
+//Enqueues the message
+Client::send($message);
 
 ```
 
-Also indirect message API available
 
-```php
 
-use \CodeMonkeysRu\GCM;
-
-$sender = new GCM\Sender("YOUR GOOGLE API KEY");
-
-try {
-    $response = $sender->sendMessage(
-        array("device_registration_id1", "device_registration_id2"),
-        array("data1" => "123", "data2" => "string"),
-        "collapse_key"
-    );
-
-    if ($response->getNewRegistrationIdsCount() > 0) {
-        $newRegistrationIds = $response->getNewRegistrationIds();
-        foreach ($newRegistrationIds as $oldRegistrationId => $newRegistrationId){
-            //Update $oldRegistrationId to $newRegistrationId in DB
-            //TODO
-        }
-    }
-
-    if ($response->getFailureCount() > 0) {
-        $invalidRegistrationIds = $GCMresponse->getInvalidRegistrationIds();
-        foreach($invalidRegistrationIds as $invalidRegistrationId) {
-            //Remove $invalidRegistrationId from DB
-            //TODO
-        }
-
-        //Schedule to resend messages to unavailable devices
-        $unavailableIds = $response->getUnavailableRegistrationIds();
-        //TODO
-    }
-} catch (GCM\Exception $e) {
-
-    switch ($e->getCode()) {
-        case GCM\Exception::ILLEGAL_API_KEY:
-        case GCM\Exception::AUTHENTICATION_ERROR:
-        case GCM\Exception::MALFORMED_REQUEST:
-        case GCM\Exception::UNKNOWN_ERROR:
-        case GCM\Exception::MALFORMED_RESPONSE:
-            //Deal with it
-            break;
-    }
-}
-
-```
 
 
 ChangeLog
 ----------------------
-
 * v0.1 - Initial release
 
 Licensed under MIT license.
