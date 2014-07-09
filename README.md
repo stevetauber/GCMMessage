@@ -16,32 +16,79 @@ http://developer.android.com/guide/google/gcm/index.html
 
 Example usage
 -----------------------
-```php
 
+```php
+<?php
 use \CodeMonkeysRu\GCM;
 
-GCM\Client::configure("YOUR GOOGLE API KEY", 'MyQueueJob');
+class YourClass {
 
-$message = Message::fromArray(array(
+    public function someFunction() {
+        /* The second param is our class that extends DefaultSendJob.php */
+        GCM\Client::configure("YOUR GOOGLE API KEY", 'MyQueueJob');
+
+        $message = GCM\Message::fromArray(array(
             'registration_ids' => array('device_registration_id1', 'device_registration_id2'),
             'data' => array('data1' => 123, 'data2' => 'string'),
         ));
 
-//This can all be set in the original fromArray call.
-$message
-    ->setCollapseKey('collapse_key')
-    ->setDelayWhileIdle(true)
-    ->setTimeToLive(123)
-    ->setRestrictedPackageName("com.example.trololo")
-    ->setDryRun(true);
+        /* This can all be set in the original fromArray call. */
+        $message
+            ->setCollapseKey('collapse_key')
+            ->setDelayWhileIdle(true)
+            ->setTimeToLive(123)
+            ->setRestrictedPackageName("com.example.trololo")
+            ->setDryRun(true);
+        
+        /* Enqueues the message. php-resque will process via a worker. */
+        GCM\Client::send($message);
+    }
 
-//Enqueues the message
-Client::send($message);
+}
+```
+
+MyQueueJob.php
+```php
+<?php
+class MyQueueJob extends \CodeMonkeysRu\GCM\DefaultSendJob {
+
+    /* See DefaultSendJob for all the possible statuses */
+    public function tearDown() {
+        $failed = $this->response->getFailedIds();
+        if(!empty($failed['InvalidRegistration'])) {
+            foreach($failed['InvalidRegistration'] as $f) {
+                //remove from DB records
+            }
+        }
+        if(!empty($failed['NotRegistered'])) {
+            foreach($failed['NotRegistered'] as $f) {
+                //remove from DB records
+            }
+        }
+
+        /* Canonical IDs sent? */
+        $newIds = $this->response->getNewRegistrationIds();
+        if(!empty($newIds)) {
+            foreach($newIds as $n) {
+                //Update DB records
+            }
+        }
+    }
+}
 
 ```
 
+job_app_include.php
+```php
+<?php
+require_once "vendor/autoload.php"
+require_once "MyQueueJob.php"
+```
 
-
+Command line:
+```bash
+$ QUEUE=gcmDefault APP_INCLUDE=job_app_include.php php vendor/chrisboulton/php-resque/resque.php
+```
 
 
 ChangeLog
